@@ -117,10 +117,4 @@ The unauthenticated `/sensor-window`, `/prediction-stream`, `/api/llm/chat`, and
 - Safety-risk dialogue may offer administrator involvement once and show the Korean 109 resource, but no live administrator chat, emergency queue, automatic contact, or connection guarantee exists.
 - `interventionsEnabled=false` suppresses normal interventions only; safety guidance remains available.
 
-See [backend operations](../apps/backend/README.md), [database operations](../apps/db/README.md), [mobile operations](../apps/mobile/README.md), [server API](../apps/mobile/SERVER_API_SPEC.md), [development environment](dev-environment.md), and [agent behavior](ai/agents/README.md).
-
-## GitHub Upload and Review
-
-- [Current GitHub upload changes](deployment/GITHUB_UPLOAD_CHANGES.md)
-- [Ready-to-paste pull request body](deployment/PULL_REQUEST_DESCRIPTION.md)
-- [Git commit and pull request guide](deployment/GIT_COMMIT_AND_PULL_REQUEST_GUIDE.md)
+See [backend operations](../apps/backend/README.md), [database operations](../apps/db/README.md), [mobile operations](../apps/mobile/README.md), [development environment](dev-environment.md), and [agent behavior](ai/agents/README.md).
