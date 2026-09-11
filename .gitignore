@@ -1,0 +1,65 @@
+# Certificates and keystores
+*.pem
+*.key
+*.crt
+*.p12
+*.jks
+*.keystore
+
+.env
+.env.*
+!.env.example
+
+# Python
+__pycache__/
+*.py[cod]
+*.egg-info/
+.pytest_cache/
+.mypy_cache/
+.ruff_cache/
+.venv/
+venv/
+
+# Node
+node_modules/
+apps/web/build/
+
+# Android / Gradle build outputs
+*.iml
+.gradle/
+build/
+captures/
+.externalNativeBuild/
+.cxx/
+*.apk
+*.ap_
+*.aab
+*.dex
+*.class
+
+# Android Studio and local machine settings
+.idea/
+.DS_Store
+Thumbs.db
+
+# PowerPoint temporary and inspection artifacts
+~$*.pptx
+*.pptx.inspect.ndjson
+
+# Measurement exports and local logs
+sensor_*.csv
+*.csv
+*.tsv
+*.log
+*.hprof
+*.db
+*.sqlite
+*.sqlite3
+
+# Externally mounted runtime models
+models/whisper-large-v3-turbo/
+
+# Local assistant/tool state
+.claude/
+.codex/
+.agents/

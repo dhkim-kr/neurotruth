@@ -1,0 +1,119 @@
+services:
+  db:
+    image: pgvector/pgvector:pg16
+    container_name: neurotruth-db
+    restart: unless-stopped
+    env_file:
+      - path: ../../.env
+        required: false
+    environment:
+      POSTGRES_USER: ${POSTGRES_USER:-myuser}
+      POSTGRES_PASSWORD: ${POSTGRES_PASSWORD:-changeme_strong_password}
+      POSTGRES_DB: ${POSTGRES_DB:-mydb}
+    volumes:
+      - postgres_data_v25:/var/lib/postgresql/data
+      - ./init.sql:/docker-entrypoint-initdb.d/init.sql
+    networks:
+      - neurotruth-network
+    ports:
+      - "${POSTGRES_HOST_PORT:-44551}:5432"
+    healthcheck:
+      test: ["CMD-SHELL", "pg_isready -U ${POSTGRES_USER:-myuser} -d ${POSTGRES_DB:-mydb}"]
+      interval: 10s
+      timeout: 5s
+      retries: 5
+
+  backend:
+    build:
+      context: ../backend
+      dockerfile: Dockerfile
+    container_name: neurotruth-backend
+    restart: unless-stopped
+    env_file:
+      - path: ../../.env
+        required: false
+    environment:
+      DATABASE_URL: postgresql+asyncpg://${POSTGRES_USER:-myuser}:${POSTGRES_PASSWORD:-changeme_strong_password}@db:5432/${POSTGRES_DB:-mydb}
+      SENSOR_STORAGE_ROOT: /var/lib/neurotruth/sensors
+      RPPG_STORAGE_ROOT: /var/lib/neurotruth/rppg
+      RPPG_TMPFS_ROOT: /dev/shm/neurotruth-rppg
+      RPPG_MAX_UPLOAD_MIB: ${RPPG_MAX_UPLOAD_MIB:-40}
+      TMPDIR: /dev/shm/neurotruth-rppg
+      NEUROTRUTH_SCHEMA_SQL: /app/schema/neurotruth_schema_v2_5.sql
+      CRAVING_MODEL_PATH: /app/model/weights/final_model_win20s_high2p4/model_weights.pt
+      CRAVING_MODEL_METADATA_PATH: /app/model/weights/final_model_win20s_high2p4/model_metadata.json
+      CRAVING_MODEL_SHA256: 2493e5d75fcdc9b066b341deb47f81c9db49aac37c626619b7afe1a6b2fc354c
+      CRAVING_INFERENCE_DEVICE: ${CRAVING_INFERENCE_DEVICE:-auto}
+      STATE_SUMMARY_AI_ENABLED: ${STATE_SUMMARY_AI_ENABLED:-false}
+      REPORT_AI_ENABLED: ${REPORT_AI_ENABLED:-false}
+      STT_ENABLED: ${STT_ENABLED:-false}
+      STT_BASE_URL: http://stt:8001
+      STT_CONNECT_TIMEOUT_SECONDS: ${STT_CONNECT_TIMEOUT_SECONDS:-5}
+      STT_READ_TIMEOUT_SECONDS: ${STT_READ_TIMEOUT_SECONDS:-120}
+      STT_MAX_UPLOAD_MIB: ${STT_MAX_UPLOAD_MIB:-10}
+      STT_TMPFS_ROOT: /dev/shm/neurotruth-stt
+    ports:
+      - "${BACKEND_HOST_PORT:-25991}:25991"
+    depends_on:
+      db:
+        condition: service_healthy
+      stt:
+        condition: service_started
+    volumes:
+      - encrypted_sensor_data:/var/lib/neurotruth/sensors
+      - encrypted_rppg_data:/var/lib/neurotruth/rppg
+      - ../backend/alembic.ini:/app/alembic.ini:ro
+      - ../backend/alembic:/app/alembic:ro
+      - ../../neurotruth_schema_v2_5.sql:/app/schema/neurotruth_schema_v2_5.sql:ro
+    tmpfs:
+      - /dev/shm/neurotruth-rppg:size=256m,mode=0700
+      - /dev/shm/neurotruth-stt:size=64m,mode=0700
+    command: ["sh", "-c", "alembic upgrade head && uvicorn app.main:app --host 0.0.0.0 --port 25991"]
+    networks:
+      - neurotruth-network
+
+  stt:
+    build:
+      context: ../stt-service
+      dockerfile: Dockerfile
+      args:
+        TORCH_INDEX_URL: ${STT_TORCH_INDEX_URL:-https://download.pytorch.org/whl/cpu}
+    container_name: neurotruth-stt
+    restart: unless-stopped
+    environment:
+      STT_ENABLED: ${STT_ENABLED:-false}
+      STT_MODEL_PATH: /models/whisper-large-v3-turbo-pytorch
+      STT_CPU_MODEL_PATH: /models/large-v3-turbo
+      STT_DEVICE: ${STT_DEVICE:-auto}
+      STT_ALLOW_CPU_FALLBACK: ${STT_ALLOW_CPU_FALLBACK:-true}
+      STT_MAX_UPLOAD_MIB: ${STT_MAX_UPLOAD_MIB:-10}
+      STT_TMPFS_ROOT: /dev/shm/neurotruth-stt
+    volumes:
+      - ${STT_PYTORCH_MODEL_PATH:-../../models/whisper-large-v3-turbo-pytorch}:/models/whisper-large-v3-turbo-pytorch:ro
+      - ${STT_MODEL_PATH:-../../models/whisper-large-v3-turbo}:/models/large-v3-turbo:ro
+    tmpfs:
+      - /dev/shm/neurotruth-stt:size=64m,mode=0700
+    networks:
+      - neurotruth-network
+
+  web:
+    build:
+      context: ../web
+      dockerfile: Dockerfile
+    container_name: neurotruth-web
+    restart: unless-stopped
+    ports:
+      - "${WEB_HOST_PORT:-45511}:3000"
+    depends_on:
+      - backend
+    networks:
+      - neurotruth-network
+
+networks:
+  neurotruth-network:
+    driver: bridge
+
+volumes:
+  postgres_data_v25:
+  encrypted_sensor_data:
+  encrypted_rppg_data:
